@@ -16,10 +16,10 @@ An experimental dynamic link library injector for Minecraft: Bedrock Edition tha
 
     |||
     |-|-|
-    |`🛠️` Startup|Load specified dynamic link libraries before the game is initialized.|
-    |`🎮` Runtime|Load specified dynamic link libraries after the game is initialized.|
+    |<kbd>🛠️</kbd> Startup|Load specified dynamic link libraries before the game is initialized.|
+    |<kbd>🎮</kbd> Runtime|Load specified dynamic link libraries after the game is initialized.|
 
-    - For most modifications loading at `🎮` Runtime should suffice.
-    
+    - For most modifications loading at <kbd>🎮</kbd> Runtime should suffice.
+
     - Consider consulting modification developers for more information.
 
