@@ -1,0 +1,25 @@
+# Igneous Launcher
+
+An experimental dynamic link library injector for Minecraft: Bedrock Edition that can load multiple dynamic link libraries at game startup & runtime.
+
+# Features
+
+- Load dynamic link libraries at game startup & runtime.
+
+- Load multiple dynamic link libraries at once.
+
+# Usage
+
+- Download the latest release from [GitHub Releases](https://github.com/Aetopia/Igneous.Launcher/releases).
+
+- Locate desired modifications & determine when they should be injected:
+
+    |||
+    |-|-|
+    |`🛠️` Startup|Load specified dynamic link libraries before the game is initialized.|
+    |`🎮` Runtime|Load specified dynamic link libraries after the game is initialized.|
+
+    - For most modifications loading at `🎮` Runtime should suffice.
+    
+    - Consider consulting modification developers for more information.
+
