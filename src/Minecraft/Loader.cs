@@ -175,7 +175,7 @@ public sealed class Loader
         try
         {
             /*
-                - At runtime, we queue a suspend thread that will be used to dynamic link library injection.
+                - At runtime, we queue a suspended thread that will be used to dynamic link library injection.
                 - Since we have control over the target thread's lifecycle, we don't need to use events. 
             */
 
