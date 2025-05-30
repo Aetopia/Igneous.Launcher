@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.Remoting.Messaging;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Threading;
@@ -39,6 +37,11 @@ public sealed class Loader
 
     public unsafe static void Launch(IReadOnlyList<string> paths)
     {
+        /*
+            - This function is executed at startup whenever the calling application is attached as a debugger to the game.
+            - Ensure there is a launch in progress before injecting startup modifications.
+        */
+
         using Mutex mutex = new(false, "39D92C1A-53D7-4236-91C9-DE1415719559", out var createdNew);
         if (createdNew) return;
 
@@ -54,6 +57,11 @@ public sealed class Loader
                     threadHandle = OpenThread(THREAD_ALL_ACCESS, false, uint.Parse(args[_ + 1]));
                     processHandle = OpenProcess(PROCESS_ALL_ACCESS, false, GetProcessIdOfThread(threadHandle));
 
+                    /*
+                        - Check if the target process is actually a UWP app to avoid unwanted injection.
+                        - If not a UWP app just resume the process & return early.
+                    */
+
                     OpenProcessToken(processHandle, TOKEN_QUERY, out processToken);
                     AppPolicyGetShowDeveloperDiagnostic(processToken, out var policy);
 
@@ -63,8 +71,18 @@ public sealed class Loader
                         break;
                     }
 
+                    /*  
+                        - Abuse events to synchorize with the target thread for resource cleanup.
+                        - This is done since we do not know the target thread's lifecycle when it is resumed.
+                    */
+
                     sourceHandle = CreateEvent(0, true, false, null);
                     DuplicateHandle(GetCurrentProcess(), sourceHandle, processHandle, out targetHandle, 0, false, DUPLICATE_SAME_ACCESS);
+
+                    /*
+                        - Abuse APCs to queue dynamic link library injection requests.
+                        - When the target thread is resumed, the APC queue is flushed injecting dynamic link libraries.
+                    */
 
                     for (var index = 0; index < addresses.Length; index++)
                     {
@@ -73,6 +91,11 @@ public sealed class Loader
                         WriteProcessMemory(processHandle, address, paths[index], size, 0);
                         QueueUserAPC(_loadLibrary, threadHandle, (nuint)address);
                     }
+
+                    /*
+                        - Queue APCs for thread synchorization.
+                        - To avoid a deadlock, we wait for either the target thread or event to be signaled.
+                    */
 
                     QueueUserAPC(_setEvent, threadHandle, (nuint)targetHandle);
                     QueueUserAPC(_closeHandle, threadHandle, (nuint)targetHandle);
@@ -83,7 +106,8 @@ public sealed class Loader
                 }
                 finally
                 {
-                    foreach (var address in addresses) VirtualFreeEx(processHandle, address, 0, MEM_RELEASE);
+                    foreach (var address in addresses)
+                        VirtualFreeEx(processHandle, address, 0, MEM_RELEASE);
 
                     CloseHandle(processToken);
 
@@ -101,6 +125,10 @@ public sealed class Loader
 
     public void Launch(IReadOnlyList<string> startup, IReadOnlyList<string> runtime)
     {
+        /*
+            - Assign ACLs for startup dynamic link libraries.
+        */
+
         foreach (var path in startup)
             try
             {
@@ -113,8 +141,17 @@ public sealed class Loader
 
         uint? processId = null;
 
+        /*
+            - Only load startup modifications when the game is not running.
+        */
+
         if (!_game.Running)
         {
+            /*
+                - Create a mutex to signal any new instances of the calling application to inject startup modifications.
+                - Attach the calling application as the game's debugger.
+            */
+
             using Mutex mutex = new(false, "39D92C1A-53D7-4236-91C9-DE1415719559", out var createdNew);
             try
             {
@@ -137,6 +174,11 @@ public sealed class Loader
 
         try
         {
+            /*
+                - At runtime, we queue a suspend thread that will be used to dynamic link library injection.
+                - Since we have control over the target thread's lifecycle, we don't need to use events. 
+            */
+
             processHandle = OpenProcess(PROCESS_ALL_ACCESS, false, (uint)processId);
             threadHandle = CreateRemoteThread(processHandle, 0, 0, _loadLibrary, 0, CREATE_SUSPENDED, 0);
 
@@ -150,6 +192,11 @@ public sealed class Loader
                     info.SetAccessControl(security);
                 }
                 catch { }
+
+                /*
+                    - Abuse APCs to queue dynamic link library injection requests.
+                    - When the target thread is resumed, the APC queue is flushed injecting dynamic link libraries.
+                */
 
                 var size = (nuint)(sizeof(char) * info.FullName.Length + 1);
                 var address = addresses[index] = VirtualAllocEx(processHandle, 0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);

@@ -43,6 +43,11 @@ public sealed class Game
         _loader = new(this);
     }
 
+    /*
+        - We abuse structures to serve as drop in replacements for unmanaged contiguous allocations.
+        - This allows us to use unmanaged contiguous allocations in a save context without Span<T> or Memory<T>.
+    */
+
     readonly Path _path;
 
     readonly PackageFamilyName _packageFamilyName;
@@ -68,6 +73,11 @@ public sealed class Game
     {
         get
         {
+            /*
+                - Enumerating windows is faster since we are lazily iterating.
+                - We use FindWindowEx() to bypass immersive window filtering.
+            */
+
             nint windowHandle = 0;
 
             while ((windowHandle = FindWindowEx(0, windowHandle, "MSCTFIME UI", null)) != 0)
@@ -106,6 +116,11 @@ public sealed class Game
             else _packageDebugSettings.EnableDebugging(packageFullName, value, null);
         }
     }
+
+    /*
+        - Allows the caller to wait for the game to fully initialize.
+        - Waiting for "resource_init_lock" to be deleted ensures the caller waits until the game is on the title screen.
+    */
 
     internal unsafe uint? Launch()
     {
