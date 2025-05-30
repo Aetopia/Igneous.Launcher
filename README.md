@@ -28,3 +28,5 @@ An experimental dynamic link library injector for Minecraft: Bedrock Edition tha
     - Click <kbd>➕</kbd> to add modifications.
 
     - Click <kbd>➖</kbd> to remove select modifications.
+
+- Once done, click on <kbd>▶</kbd> to launch the game with the selected modifications.
