@@ -14,7 +14,7 @@ An experimental dynamic link library injector for Minecraft: Bedrock Edition tha
 
 - Locate desired modifications & determine when they should be injected:
 
-    |||
+    |State|Description|
     |-|-|
     |<kbd>🛠️</kbd> Startup|Load specified dynamic link libraries before the game is initialized.|
     |<kbd>🎮</kbd> Runtime|Load specified dynamic link libraries after the game is initialized.|
