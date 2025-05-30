@@ -126,7 +126,7 @@ public sealed class Loader
     public void Launch(IReadOnlyList<string> startup, IReadOnlyList<string> runtime)
     {
         /*
-            - Assign ACLs for startup dynamic link libraries.
+            - Assign ACLs for startup modifications.
         */
 
         foreach (var path in startup)
