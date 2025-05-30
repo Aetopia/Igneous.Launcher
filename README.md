@@ -30,3 +30,14 @@ An experimental dynamic link library injector for Minecraft: Bedrock Edition tha
     - Click <kbd>➖</kbd> to remove select modifications.
 
 - Once done, click on <kbd>▶</kbd> to launch the game with the selected modifications.
+
+## Build
+
+## Building
+1. Download the [.NET SDK](https://dotnet.microsoft.com/en-us/download).
+
+2. Run the following command to compile:
+
+    ```cmd
+    dotnet publish "src\Igneous.Launcher.csproj"
+    ```
