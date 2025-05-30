@@ -37,97 +37,98 @@ public sealed class Loader
 
     public unsafe static void Launch(IReadOnlyList<string> paths)
     {
-        /*
+        try
+        { /*
             - This function is executed at startup whenever the calling application is attached as a debugger to the game.
             - Ensure there is a launch in progress before injecting startup modifications.
         */
 
-        using Mutex mutex = new(false, "39D92C1A-53D7-4236-91C9-DE1415719559", out var createdNew);
-        if (createdNew) return;
+            using Mutex mutex = new(false, "39D92C1A-53D7-4236-91C9-DE1415719559", out var createdNew);
+            if (createdNew) return;
 
-        var args = Environment.GetCommandLineArgs();
-        for (var _ = 0; _ + 1 < args.Length; _++)
-            if (args[_] == "-tid")
-            {
-                var addresses = new nint[paths.Count];
-                nint threadHandle = 0, processHandle = 0, sourceHandle = 0, targetHandle = 0, processToken = 0;
-
-                try
+            var args = Environment.GetCommandLineArgs();
+            for (var _ = 0; _ + 1 < args.Length; _++)
+                if (args[_] == "-tid")
                 {
-                    threadHandle = OpenThread(THREAD_ALL_ACCESS, false, uint.Parse(args[_ + 1]));
-                    processHandle = OpenProcess(PROCESS_ALL_ACCESS, false, GetProcessIdOfThread(threadHandle));
+                    var addresses = new nint[paths.Count];
+                    nint threadHandle = 0, processHandle = 0, sourceHandle = 0, targetHandle = 0, processToken = 0;
 
-                    /*
-                        - Check if the target process is actually a UWP app to avoid unwanted injection.
-                        - If not a UWP app just resume the process & return early.
-                    */
-
-                    OpenProcessToken(processHandle, TOKEN_QUERY, out processToken);
-                    AppPolicyGetShowDeveloperDiagnostic(processToken, out var policy);
-
-                    if (policy != AppPolicyShowDeveloperDiagnostic.AppPolicyShowDeveloperDiagnostic_None)
+                    try
                     {
+                        threadHandle = OpenThread(THREAD_ALL_ACCESS, false, uint.Parse(args[_ + 1]));
+                        processHandle = OpenProcess(PROCESS_ALL_ACCESS, false, GetProcessIdOfThread(threadHandle));
+
+                        /*
+                            - Check if the target process is actually a UWP app to avoid unwanted injection.
+                            - If not a UWP app just resume the process & return early.
+                        */
+
+                        OpenProcessToken(processHandle, TOKEN_QUERY, out processToken);
+                        AppPolicyGetShowDeveloperDiagnostic(processToken, out var policy);
+
+                        if (policy != AppPolicyShowDeveloperDiagnostic.AppPolicyShowDeveloperDiagnostic_None)
+                        {
+                            ResumeThread(threadHandle);
+                            break;
+                        }
+
+                        /*  
+                            - Abuse events to synchorize with the target thread for resource cleanup.
+                            - This is done since we do not know the target thread's lifecycle when it is resumed.
+                        */
+
+                        sourceHandle = CreateEvent(0, true, false, null);
+                        DuplicateHandle(GetCurrentProcess(), sourceHandle, processHandle, out targetHandle, 0, false, DUPLICATE_SAME_ACCESS);
+
+                        /*
+                            - Abuse APCs to queue dynamic link library injection requests.
+                            - When the target thread is resumed, the APC queue is flushed injecting dynamic link libraries.
+                        */
+
+                        for (var index = 0; index < addresses.Length; index++)
+                        {
+                            var path = Path.GetFullPath(paths[index]);
+                            var size = (nuint)(sizeof(char) * path.Length + 1);
+                            var address = addresses[index] = VirtualAllocEx(processHandle, 0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+                            WriteProcessMemory(processHandle, address, path, size, 0);
+                            QueueUserAPC(_loadLibrary, threadHandle, (nuint)address);
+                        }
+
+                        /*
+                            - Queue APCs for thread synchorization.
+                            - To avoid a deadlock, we wait for either the target thread or event to be signaled.
+                        */
+
+                        QueueUserAPC(_setEvent, threadHandle, (nuint)targetHandle);
+                        QueueUserAPC(_closeHandle, threadHandle, (nuint)targetHandle);
                         ResumeThread(threadHandle);
-                        break;
+
+                        var handles = stackalloc nint[] { threadHandle, sourceHandle };
+                        WaitForMultipleObjects(2, handles, false, INFINITE);
                     }
-
-                    /*  
-                        - Abuse events to synchorize with the target thread for resource cleanup.
-                        - This is done since we do not know the target thread's lifecycle when it is resumed.
-                    */
-
-                    sourceHandle = CreateEvent(0, true, false, null);
-                    DuplicateHandle(GetCurrentProcess(), sourceHandle, processHandle, out targetHandle, 0, false, DUPLICATE_SAME_ACCESS);
-
-                    /*
-                        - Abuse APCs to queue dynamic link library injection requests.
-                        - When the target thread is resumed, the APC queue is flushed injecting dynamic link libraries.
-                    */
-
-                    for (var index = 0; index < addresses.Length; index++)
+                    finally
                     {
-                        var path = Path.GetFullPath(paths[index]);
-                        var size = (nuint)(sizeof(char) * path.Length + 1);
-                        var address = addresses[index] = VirtualAllocEx(processHandle, 0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-                        WriteProcessMemory(processHandle, address, path, size, 0);
-                        QueueUserAPC(_loadLibrary, threadHandle, (nuint)address);
+                        /*
+                            - Attempt to resume the thread regardless of the calling application's state. 
+                        */
+
+                        ResumeThread(threadHandle);
+
+                        foreach (var address in addresses)
+                            VirtualFreeEx(processHandle, address, 0, MEM_RELEASE);
+
+                        CloseHandle(processToken);
+
+                        CloseHandle(sourceHandle);
+                        CloseHandle(targetHandle);
+
+                        CloseHandle(processHandle);
+                        CloseHandle(threadHandle);
                     }
-
-                    /*
-                        - Queue APCs for thread synchorization.
-                        - To avoid a deadlock, we wait for either the target thread or event to be signaled.
-                    */
-
-                    QueueUserAPC(_setEvent, threadHandle, (nuint)targetHandle);
-                    QueueUserAPC(_closeHandle, threadHandle, (nuint)targetHandle);
-                    ResumeThread(threadHandle);
-
-                    var handles = stackalloc nint[] { threadHandle, sourceHandle };
-                    WaitForMultipleObjects(2, handles, false, INFINITE);
+                    break;
                 }
-                finally
-                {
-                    /*
-                        - Attempt to resume the thread regardless of the calling application's state. 
-                    */
-
-                    ResumeThread(threadHandle);
-
-                    foreach (var address in addresses)
-                        VirtualFreeEx(processHandle, address, 0, MEM_RELEASE);
-
-                    CloseHandle(processToken);
-
-                    CloseHandle(sourceHandle);
-                    CloseHandle(targetHandle);
-
-                    CloseHandle(processHandle);
-                    CloseHandle(threadHandle);
-                }
-                break;
-            }
-
-        Environment.Exit(0);
+        }
+        finally { Environment.Exit(0); }
     }
 
     public void Launch(IReadOnlyList<string> startup, IReadOnlyList<string> runtime)
