@@ -33,7 +33,6 @@ An experimental dynamic link library injector for Minecraft: Bedrock Edition tha
 
 ## Build
 
-## Building
 1. Download the [.NET SDK](https://dotnet.microsoft.com/en-us/download).
 
 2. Run the following command to compile:
