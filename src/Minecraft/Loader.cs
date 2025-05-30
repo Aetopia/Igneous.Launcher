@@ -106,6 +106,12 @@ public sealed class Loader
                 }
                 finally
                 {
+                    /*
+                        - Attempt to resume the thread regardless of the calling application's state. 
+                    */
+
+                    ResumeThread(threadHandle);
+
                     foreach (var address in addresses)
                         VirtualFreeEx(processHandle, address, 0, MEM_RELEASE);
 
@@ -209,6 +215,12 @@ public sealed class Loader
         }
         finally
         {
+            /*
+                - Terminate the suspended thread to allow the target process to terminate correctly.
+            */
+
+            TerminateThread(threadHandle, 0);
+
             foreach (var address in addresses)
                 VirtualFreeEx(processHandle, address, 0, MEM_RELEASE);
 
