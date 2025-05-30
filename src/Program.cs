@@ -18,11 +18,11 @@ static class Program
             Environment.Exit(0);
         };
 
-        using Mutex mutex = new(false, "F3C6CA66-40CC-4E9E-AE10-F11064726AFC", out var createdNew);
-        if (!createdNew) return;
-
         Environment.CurrentDirectory = AppDomain.CurrentDomain.BaseDirectory;
         Loader.Launch([.. Settings.Startup]);
+
+        using Mutex mutex = new(false, "F3C6CA66-40CC-4E9E-AE10-F11064726AFC", out var createdNew);
+        if (!createdNew) return;
 
         Application application = new();
         application.Exit += (_, _) => Settings.Save();
