@@ -86,9 +86,10 @@ public sealed class Loader
 
                     for (var index = 0; index < addresses.Length; index++)
                     {
-                        var size = (nuint)(sizeof(char) * paths[index].Length + 1);
+                        var path = Path.GetFullPath(paths[index]);
+                        var size = (nuint)(sizeof(char) * path.Length + 1);
                         var address = addresses[index] = VirtualAllocEx(processHandle, 0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-                        WriteProcessMemory(processHandle, address, paths[index], size, 0);
+                        WriteProcessMemory(processHandle, address, path, size, 0);
                         QueueUserAPC(_loadLibrary, threadHandle, (nuint)address);
                     }
 
