@@ -23,7 +23,7 @@ An experimental dynamic link library injector for Minecraft: Bedrock Edition tha
 
     - Consider consulting modification developers for more information.
 
-- In the relevant section:
+- Once you have determined when to inject the desired modifications, in either <kbd>🛠️</kbd> or <kbd>🎮</kbd> sections:
 
     - Click <kbd>➕</kbd> to add modifications.
 
