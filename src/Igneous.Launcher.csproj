@@ -5,6 +5,8 @@
     <TargetFramework>net481</TargetFramework>
     <LangVersion>latest</LangVersion>
     <UseWPF>true</UseWPF>
+    <PublishRelease>true</PublishRelease>
+    <Optimize>true</Optimize>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>Resources\Program.manifest</ApplicationManifest>
   </PropertyGroup>
