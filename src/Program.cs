@@ -2,10 +2,12 @@ using System;
 using System.Windows;
 using Igneous.Launcher.Configuration;
 using Igneous.Launcher.Minecraft;
-
 using static Igneous.Launcher.PInvoke.Shell32;
 using static Igneous.Launcher.PInvoke.Constants;
 using System.Threading;
+using System.Runtime.InteropServices;
+
+[assembly: DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 
 static class Program
 {
